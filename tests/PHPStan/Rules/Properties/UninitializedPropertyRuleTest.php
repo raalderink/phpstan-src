@@ -2,6 +2,9 @@
 
 namespace PHPStan\Rules\Properties;
 
+use PHPStan\DependencyInjection\Container;
+use PHPStan\Reflection\AdditionalConstructorsExtension;
+use PHPStan\Reflection\ClassReflection;
 use PHPStan\Reflection\ConstructorsHelper;
 use PHPStan\Reflection\PropertyReflection;
 use PHPStan\Rules\Rule;
@@ -15,8 +18,29 @@ class UninitializedPropertyRuleTest extends RuleTestCase
 
 	protected function getRule(): Rule
 	{
+		$containerMock = $this->createMock(Container::class);
+		$containerMock->method('getServicesByTag')
+			->with(AdditionalConstructorsExtension::EXTENSION_TAG)
+			->willReturn(
+				[
+					new class() implements AdditionalConstructorsExtension {
+
+						public function getAdditionalConstructors(ClassReflection $classReflection): array
+						{
+							if ($classReflection->getName() === 'UninitializedProperty\\TestAdditionalConstructor') {
+								return ['setTwo'];
+							}
+
+							return [];
+						}
+
+					},
+				],
+			);
+
 		return new UninitializedPropertyRule(
 			new ConstructorsHelper(
+				$containerMock,
 				[
 					'UninitializedProperty\\TestCase::setUp',
 				],
@@ -78,6 +102,10 @@ class UninitializedPropertyRuleTest extends RuleTestCase
 			[
 				'Class UninitializedProperty\FooTraitClass has an uninitialized property $baz. Give it default value or assign it in the constructor.',
 				159,
+			],
+			[
+				'Class UninitializedProperty\TestAdditionalConstructor has an uninitialized property $one. Give it default value or assign it in the constructor.',
+				182,
 			],
 		]);
 	}
