@@ -2,9 +2,6 @@
 
 namespace PHPStan\Rules\Properties;
 
-use PHPStan\DependencyInjection\Container;
-use PHPStan\Reflection\AdditionalConstructorsExtension;
-use PHPStan\Reflection\ClassReflection;
 use PHPStan\Reflection\ConstructorsHelper;
 use PHPStan\Reflection\PropertyReflection;
 use PHPStan\Rules\Rule;
@@ -18,29 +15,9 @@ class UninitializedPropertyRuleTest extends RuleTestCase
 
 	protected function getRule(): Rule
 	{
-		$containerMock = $this->createMock(Container::class);
-		$containerMock->method('getServicesByTag')
-			->with(AdditionalConstructorsExtension::EXTENSION_TAG)
-			->willReturn(
-				[
-					new class() implements AdditionalConstructorsExtension {
-
-						public function getAdditionalConstructors(ClassReflection $classReflection): array
-						{
-							if ($classReflection->getName() === 'UninitializedProperty\\TestAdditionalConstructor') {
-								return ['setTwo'];
-							}
-
-							return [];
-						}
-
-					},
-				],
-			);
-
 		return new UninitializedPropertyRule(
 			new ConstructorsHelper(
-				$containerMock,
+				self::getContainer(),
 				[
 					'UninitializedProperty\\TestCase::setUp',
 				],
@@ -69,6 +46,13 @@ class UninitializedPropertyRuleTest extends RuleTestCase
 				}
 
 			},
+		];
+	}
+
+	public static function getAdditionalConfigFiles(): array
+	{
+		return [
+			__DIR__ . '/uninitialized-property-rule.neon',
 		];
 	}
 
@@ -103,10 +87,6 @@ class UninitializedPropertyRuleTest extends RuleTestCase
 				'Class UninitializedProperty\FooTraitClass has an uninitialized property $baz. Give it default value or assign it in the constructor.',
 				159,
 			],
-			[
-				'Class UninitializedProperty\TestAdditionalConstructor has an uninitialized property $one. Give it default value or assign it in the constructor.',
-				182,
-			],
 		]);
 	}
 
@@ -137,6 +117,20 @@ class UninitializedPropertyRuleTest extends RuleTestCase
 			[
 				'Class Bug7219\Foo has an uninitialized property $email. Give it default value or assign it in the constructor.',
 				15,
+			],
+		]);
+	}
+
+	public function testAdditionalConstructorsExtension(): void
+	{
+		$this->analyse([__DIR__ . '/data/uninitialized-property-additional-constructors.php'], [
+			[
+				'Class TestInitializedProperty\TestAdditionalConstructor has an uninitialized property $one. Give it default value or assign it in the constructor.',
+				07,
+			],
+			[
+				'Class TestInitializedProperty\TestAdditionalConstructor has an uninitialized property $three. Give it default value or assign it in the constructor.',
+				11,
 			],
 		]);
 	}

@@ -176,15 +176,3 @@ class FooTraitClass
 	}
 
 }
-
-class TestAdditionalConstructor
-{
-	public string $one;
-
-	protected int $two;
-
-	public function setTwo(int $value): void
-	{
-		$this->two = $value;
-	}
-}
